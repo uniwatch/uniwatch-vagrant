@@ -1,0 +1,119 @@
+---
+- hosts: all
+  vars:
+    vimconfig_repo: git@github.com:macseem/vimconfig.git
+    home_dir: /home/vagrant
+    vimconfig_dir: /vimconfig
+    uniwatch_repo: git@github.com:macseem/uniwatch.git
+    uniwatch_dir: /var/www/uniwatch
+    composer_path: /usr/local/bin
+    composer: /usr/local/bin/composer
+  tasks:
+
+  - name: Apt-get update
+    sudo: yes
+    apt: update_cache=yes
+
+  - name: Setup git
+    sudo: yes
+    apt: name=git state=present
+
+
+  - name: Setup nginx
+    sudo: yes
+    apt: name=nginx state=present
+  - name: Setup nginx.conf
+    sudo: yes
+    template: src=nginx/nginx.conf
+              dest=/etc/nginx/nginx.conf
+
+
+  - name: Setup php5-fpm
+    sudo: yes
+    apt: name=php5-fpm state=present
+  - name: Load php5/cli.ini
+    sudo: yes
+    template: src=php/cli.ini
+              dest=/etc/php5/cli/php.ini
+  - name: Load php5/fpm.ini
+    sudo: yes
+    template: src=php/fpm.ini
+              dest=/etc/php5/fpm/php.ini
+  - name: Load php5/php-fpm.ini
+    sudo: yes
+    template: src=php/php-fpm.conf
+              dest=/etc/php5/fpm/php-fpm.conf
+  - name: Load php5/www.conf
+    sudo: yes
+    template: src=php/www.conf
+              dest=/etc/php5/fpm/pool.d/www.conf
+
+
+  - name: Setup php-pear
+    sudo: yes
+    apt: name=php-pear state=present
+
+  - name: Setup curl
+    sudo: yes
+    apt: name=curl state=present
+    apt: name=php5-curl state=present
+
+  - name: Setup mysql
+    sudo: yes
+    apt: name=mysql state=present
+    apt: name=php5-mysql state=present
+
+  - name: Setup vim
+    sudo: yes
+    apt: name=vim state=present
+  - name: Add github to ssh_known_hosts
+    shell: ssh-keyscan -H -t dsa github.com >> ~/.ssh/known_hosts 2>&1
+  - name: Clone vimconfig
+    git: repo={{ vimconfig_repo }}
+         dest={{ home_dir }}{{ vimconfig_dir }}
+  - name: Install vimconfig       
+    shell: chdir={{ home_dir }}{{vimconfig_dir}} /bin/bash install.sh
+  - name: Remove apache if exists
+    sudo: yes
+    apt: name=apache2 state=absent
+
+
+  - name: Install composer
+    sudo: yes
+    shell: curl -s https://getcomposer.org/installer | php
+  - name: Move composer to /usr/local/bin
+    sudo: yes
+    shell: sudo mv composer.phar {{ composer_path }}/composer
+  - name: Make composer file permissions
+    sudo: yes
+    file: path=/usr/bin/composer mode=0755
+  - name: Do composer self-update
+    sudo: yes
+    shell: "{{ composer }} self-update"
+
+  - name: Install phpmyadmin
+    sudo: yes
+    apt: name=phpmyadmin state=present
+  - name: Setup sites-enabled/phpmyadmin
+    sudo: yes
+    template: src=nginx/sites-enabled/phpmyadmin
+              dest=/etc/nginx/sites-enabled/phpmyadmin
+
+
+  - name: Clone project
+    git: repo={{ uniwatch_repo }}
+         dest={{ uniwatch_dir }}
+  - name: Do composer -vvv install
+    shell: "chdir={{ uniwatch_dir }} {{ composer }} -vvv install"
+  - name: Setup sites-enabled/uniwatch
+    sudo: yes
+    template: src=nginx/sites-enabled/uniwatch
+              dest=/etc/nginx/sites-enabled/uniwatch
+
+
+  - name: Reload nginx
+    sudo: yes
+    service: name=nginx state=reloaded
+  - name: Reload php5-fpm
+    sudo: yes
+    service: name=php5-fpm state=reloaded

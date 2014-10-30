@@ -1,0 +1,15 @@
+server {
+    listen       80;                          # listen port
+    server_name  pma.uniwatch;
+    root   /usr/share/phpmyadmin;           # Document root
+    index index.php  index.html index.htm;
+    location / {
+    }
+    location ~ \.php$ {
+        fastcgi_pass   unix:/var/run/php5-fpm.sock;
+        fastcgi_index  index.php;
+        fastcgi_param  SCRIPT_FILENAME  $document_root$fastcgi_script_name;
+        include        fastcgi_params;
+    }
+}
+
