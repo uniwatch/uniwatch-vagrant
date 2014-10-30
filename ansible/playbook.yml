@@ -1,6 +1,9 @@
 ---
 - hosts: all
+
   vars:
+    services_user: vagrant
+    services_group: vagrant
     vimconfig_repo: git@github.com:macseem/vimconfig.git
     home_dir: /home/vagrant
     vimconfig_dir: /vimconfig
@@ -8,6 +11,7 @@
     uniwatch_dir: /var/www/uniwatch
     composer_path: /usr/local/bin
     composer: /usr/local/bin/composer
+
   tasks:
 
   - name: Apt-get update
