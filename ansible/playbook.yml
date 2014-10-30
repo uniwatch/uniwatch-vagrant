@@ -11,6 +11,13 @@
     uniwatch_dir: /var/www/uniwatch
     composer_path: /usr/local/bin
     composer: /usr/local/bin/composer
+    ansible_dir: /vagrant/ansible
+
+    db_host: localhost
+    db_user: root
+    db_password: ""
+    db_name: uniwatch
+    db_init_file: db/init.sql
 
   tasks:
 
@@ -22,19 +29,21 @@
     sudo: yes
     apt: name=git state=present
 
-
+#Setup nginx, php, curl, mysql
   - name: Setup nginx
     sudo: yes
     apt: name=nginx state=present
-  - name: Setup nginx.conf
+  - name: Load nginx.conf
     sudo: yes
     template: src=nginx/nginx.conf
               dest=/etc/nginx/nginx.conf
 
-
   - name: Setup php5-fpm
     sudo: yes
     apt: name=php5-fpm state=present
+  - name: Setup php5-cli
+    sudo: yes
+    apt: name=php5-cli state=present
   - name: Load php5/cli.ini
     sudo: yes
     template: src=php/cli.ini
@@ -52,7 +61,6 @@
     template: src=php/www.conf
               dest=/etc/php5/fpm/pool.d/www.conf
 
-
   - name: Setup php-pear
     sudo: yes
     apt: name=php-pear state=present
@@ -60,13 +68,22 @@
   - name: Setup curl
     sudo: yes
     apt: name=curl state=present
+  - name: Setup php5-curl
+    sudo: yes
     apt: name=php5-curl state=present
 
-  - name: Setup mysql
+  - name: Setup mysql-server
     sudo: yes
-    apt: name=mysql state=present
+    apt: name=mysql-server state=present
+  - name: Setup mysql-client
+    sudo: yes
+    apt: name=mysql-client state=present
+  - name: setup php5-mysql
+    sudo: yes
     apt: name=php5-mysql state=present
+#End Setup nginx, php, curl, mysql
 
+#Setup vim
   - name: Setup vim
     sudo: yes
     apt: name=vim state=present
@@ -77,11 +94,12 @@
          dest={{ home_dir }}{{ vimconfig_dir }}
   - name: Install vimconfig       
     shell: chdir={{ home_dir }}{{vimconfig_dir}} /bin/bash install.sh
+#End Setup vim
   - name: Remove apache if exists
     sudo: yes
     apt: name=apache2 state=absent
 
-
+#Install composer
   - name: Install composer
     sudo: yes
     shell: curl -s https://getcomposer.org/installer | php
@@ -90,20 +108,24 @@
     shell: sudo mv composer.phar {{ composer_path }}/composer
   - name: Make composer file permissions
     sudo: yes
-    file: path=/usr/bin/composer mode=0755
+    file: path={{ composer_path }} mode=0755
   - name: Do composer self-update
     sudo: yes
     shell: "{{ composer }} self-update"
+#End Install composer
+
+
 
   - name: Install phpmyadmin
     sudo: yes
     apt: name=phpmyadmin state=present
-  - name: Setup sites-enabled/phpmyadmin
+  - name: Make simlink to phpmyadmin
     sudo: yes
-    template: src=nginx/sites-enabled/phpmyadmin
-              dest=/etc/nginx/sites-enabled/phpmyadmin
+    shell: chdir=/usr/share/nginx/html ln -s /usr/share/phpmyadmin
+    #template: src=nginx/sites-enabled/phpmyadmin
+    #          dest=/etc/nginx/sites-enabled/phpmyadmin
 
-
+#Install uniwatch
   - name: Clone project
     git: repo={{ uniwatch_repo }}
          dest={{ uniwatch_dir }}
@@ -113,11 +135,22 @@
     sudo: yes
     template: src=nginx/sites-enabled/uniwatch
               dest=/etc/nginx/sites-enabled/uniwatch
+  - name: Init Db
+    shell: mysql -h{{ db_host }} -u{{ db_user }} < {{ ansible_dir }}/{{ db_init_file }}
+  - name: Make migrations
+    shell: chdir={{ uniwatch_dir }} php ./yii migrate/up --interactive=0
 
+#  - name: Init crontab
+#    ...
+#End Install uniwatch
 
+#Reload services
   - name: Reload nginx
     sudo: yes
     service: name=nginx state=reloaded
   - name: Reload php5-fpm
     sudo: yes
     service: name=php5-fpm state=reloaded
+
+
+

@@ -1,6 +1,6 @@
 server {
     listen       80;                          # listen port
-    server_name  pma.uniwatch;
+    server_name  pma.uniwatch.com;
     root   /usr/share/phpmyadmin;           # Document root
     index index.php  index.html index.htm;
     location / {
