@@ -4,10 +4,10 @@
   vars:
     services_user: vagrant
     services_group: vagrant
-    vimconfig_repo: git@github.com:macseem/vimconfig.git
+    vimconfig_repo: https://github.com/macseem/vimconfig.git
     home_dir: /home/vagrant
     vimconfig_dir: /vimconfig
-    uniwatch_repo: git@github.com:macseem/uniwatch.git
+    uniwatch_repo: https://github.com/uniwatch/uniwatch.git
     uniwatch_dir: /var/www/uniwatch
     composer_path: /usr/local/bin
     composer: /usr/local/bin/composer
@@ -30,6 +30,9 @@
     apt: name=git state=present
 
 #Setup nginx, php, curl, mysql
+  - name: Remove apache if exists
+    sudo: yes
+    apt: name=apache2 state=absent
   - name: Setup nginx
     sudo: yes
     apt: name=nginx state=present
@@ -95,9 +98,6 @@
   - name: Install vimconfig       
     shell: chdir={{ home_dir }}{{vimconfig_dir}} /bin/bash install.sh
 #End Setup vim
-  - name: Remove apache if exists
-    sudo: yes
-    apt: name=apache2 state=absent
 
 #Install composer
   - name: Install composer
@@ -121,16 +121,22 @@
     apt: name=phpmyadmin state=present
   - name: Make simlink to phpmyadmin
     sudo: yes
-    shell: chdir=/usr/share/nginx/html ln -s /usr/share/phpmyadmin
-    #template: src=nginx/sites-enabled/phpmyadmin
-    #          dest=/etc/nginx/sites-enabled/phpmyadmin
+    file: state=link
+          src=/usr/share/phpmyadmin
+          dest=/usr/share/nginx/html/phpmyadmin
+  - name: Load phpmyadmin into sites-enabled
+    sudo: yes
+    template: src=nginx/sites-enabled/phpmyadmin
+              dest=/etc/nginx/sites-enabled/phpmyadmin
 
 #Install uniwatch
   - name: Clone project
     git: repo={{ uniwatch_repo }}
          dest={{ uniwatch_dir }}
   - name: Do composer -vvv install
-    shell: "chdir={{ uniwatch_dir }} {{ composer }} -vvv install"
+    composer: working_dir={{ uniwatch_dir }}
+              no_dev=no
+    #shell: "chdir={{ uniwatch_dir }} {{ composer }} -vvv install"
   - name: Setup sites-enabled/uniwatch
     sudo: yes
     template: src=nginx/sites-enabled/uniwatch
